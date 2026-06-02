@@ -41,7 +41,7 @@ The system combines:
 
 ##  Key Features
 
-### 🔍 Smart Size Recommendation
+###  Smart Size Recommendation
 - Rule-based engine detects product fit type (slim/regular/loose) from product name
 - Adjusts recommendation based on user's fit preference (+/- 1 size step)
 - BMI-based size estimation from user profile
@@ -150,11 +150,11 @@ streamlit run arayuz.py
 
 | Platform | Review Integration | Product Data |
 |---|---|---|
-| Trendyol | ✅ API (full stats) | ✅ Full |
-| Hepsiburada | DOM | ✅ Full |
-| Amazon Turkey | DOM | ✅ Full |
-| Zara | DOM | ✅ Full |
-| Mango | DOM | ✅ Full |
+| Trendyol |  API (full stats) |  Full |
+| Hepsiburada | DOM |  Full |
+| Amazon Turkey | DOM |  Full |
+| Zara | DOM |  Full |
+| Mango | DOM |  Full |
 | N11 | DOM | Partial |
 | Boyner | DOM | Partial |
 | LCWaikiki | DOM | Partial |
