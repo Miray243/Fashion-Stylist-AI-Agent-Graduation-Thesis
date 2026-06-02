@@ -1,87 +1,195 @@
-# 👗 AI Personal Fashion Stylist Agent
+# Fashion Stylist AI Agent
 
-## 📖 Project Overview
+**Graduation Thesis — Çukurova University, Computer Engineering Department**
 
-This project is an intelligent **AI Agent** designed to act as a Personal Fashion Stylist. It leverages the **ReAct (Reasoning + Acting)** architecture to understand user needs, retrieve styling rules from a Knowledge Base (**RAG**), and search for actual products in a real-world inventory.
-
-The agent is powered by **Llama-3-70b (via Groq API)** and utilizes **ChromaDB** for vector semantic search.
-
-### 🚀 Key Features
-
-* **🧠 Multi-Hop Reasoning:** The agent can break down complex queries (e.g., *"Find an outfit for a Pear body shape"*). It first researches styling rules and then searches for matching products.
-* **🌍 Cross-Lingual Support:** Capable of understanding queries in **Turkish**, translating the intent to English for database search, and responding back in Turkish.
-* **🛍️ Real-World Inventory:** Integrated with a subset of the Kaggle Fashion Product Images Dataset (44k+ items) for realistic product recommendations.
-* **📚 RAG (Retrieval-Augmented Generation):** Uses semantic search to retrieve fashion theory (Color Analysis, Body Types, Fabric Guide) from text documents.
+| | |
+|---|---|
+| **Student** | Miray Balıkoğlu (2021556009) |
+| **Advisor** | Prof. Dr. Umut Orhan |
+| **University** | Çukurova University |
+| **Department** | Computer Engineering |
+| **Date** | June 2026 |
 
 ---
 
-## 🛠️ Technical Architecture
+##  Overview
 
-* **LLM:** Llama-3.3-70b-versatile (Groq API)
-* **Vector Database:** ChromaDB
-* **Embedding Model:** sentence-transformers/all-MiniLM-L6-v2
-* **Data Processing:** Pandas, NumPy
-* **Framework:** Custom Python Agent (ReAct Loop: Thought $\to$ Action $\to$ Observation)
+E-commerce fashion return rates have reached **30–40% globally**, with size mismatches being the leading cause. This project presents a multi-layered AI decision agent that provides **personalized, context-aware clothing recommendations** during active shopping sessions.
 
----
-
-## 📂 Repository Structure
-
-* `Agent.ipynb`: The main Jupyter Notebook containing the agent logic, tools, and test suite.
-* `dataset/`: Contains the Knowledge Base text files and the product inventory sample:
-    * `body_type_guide.txt`, `color_theory_analysis.txt`, etc.
-    * `styles_sample.csv` (Product Inventory)
-* `requirements.txt`: List of dependencies required to run the project.
+The system combines:
+- A **rule-based decision engine** for deterministic, explainable size recommendations
+- A **ReAct-framework LLM agent** (LLaMA 3.3 70B via Groq) for natural language styling advice
+- A **CLIP-based visual wardrobe analysis** module for outfit compatibility scoring
+- A **Trendyol review API integration** for community-sourced sizing statistics
 
 ---
 
-## 📊 Benchmark & Stress Testing
+##  System Architecture
 
-The agent was subjected to a comprehensive stress test comprising **11 scenarios** with varying difficulty levels. It achieved a **100% Success Rate**.
-
-| Scenario | Difficulty | Status | Score |
-| :--- | :--- | :---: | :---: |
-| **Turkish Language Query (Cross-Lingual)** | Hard | ✅ | 100/100 |
-| Pear Shape + Summer Outfit (Multi-Hop) | Hard | ✅ | 100/100 |
-| Apple Shape + Formal Wear | Hard | ✅ | 100/100 |
-| Winter Fabric Recommendation | Hard | ✅ | 100/100 |
-| Specific Item Search (Red Dress) | Medium | ✅ | 100/100 |
-| Category Search (Heels) | Medium | ✅ | 100/100 |
-| Usage Search (Casual) | Medium | ✅ | 100/100 |
-| Color Theory (Cool Undertones) | Medium | ✅ | 100/100 |
-| Styling Don'ts (Inverted Triangle) | Medium | ✅ | 100/100 |
-| Unit Conversion (Calculator) | Easy | ✅ | 100/100 |
-| Budget Calculation | Easy | ✅ | 100/100 |
+```
+┌─────────────────────┐     ┌──────────────────────┐     ┌─────────────────────┐
+│   Chrome Extension  │────▶│   FastAPI Backend     │────▶│  Streamlit Frontend │
+│                     │     │                       │     │                     │
+│ • Product data      │     │ • Decision engine     │     │ • Profile manager   │
+│ • Review API        │     │ • LLM agent (ReAct)   │     │ • Recent analyses   │
+│ • Popup UI          │     │ • CLIP wardrobe        │     │ • Wardrobe tab      │
+│ • 9 e-commerce sites│     │ • Combo suggestions   │     │ • Chat with stylist │
+└─────────────────────┘     └──────────────────────┘     └─────────────────────┘
+```
 
 ---
 
-## ⚙️ Installation & Usage
+##  Key Features
 
-1.  **Clone the repository:**
-    ```bash
-    git clone [https://github.com/Miray243/Fashion-Stylist-Al-Agent.git](https://github.com/Miray243/Fashion-Stylist-Al-Agent.git)
-    ```
+### 🔍 Smart Size Recommendation
+- Rule-based engine detects product fit type (slim/regular/loose) from product name
+- Adjusts recommendation based on user's fit preference (+/- 1 size step)
+- BMI-based size estimation from user profile
+- **88% accuracy** on test set with calibrated confidence scores (85–95%)
 
-2.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+###  Fabric Allergy Detection
+- Detects allergens (polyester, wool, nylon, acrylic) in fabric composition
+- Supports Turkish and English descriptions
+- Shows warning in popup before purchase
 
-3.  **Set up API Key:**
-    * Get your free API Key from [Groq Console](https://console.groq.com/).
-    * Add it to your environment variables or Colab Secrets as `GROQ_API_KEY`.
+###  Trendyol Review API Integration
+- Fetches size distribution, height/weight stats of actual buyers
+- Retrieves AI-generated review summary from Trendyol
+- Enriches recommendations with community-validated data
 
-4.  **Run the Agent:**
-    Open `Agent.ipynb` and run all cells. You can query the agent using the `query()` function:
-    ```python
-    query("I have a Pear body shape. Find me a suitable outfit for Summer.")
-    ```
+###  CLIP-Based Wardrobe Compatibility
+Three-layer compatibility scoring:
+
+| Layer | Method | Weight |
+|---|---|---|
+| Visual similarity | CLIP cosine similarity (clip-ViT-B-32) | 40% |
+| Category compatibility | Top+Bottom=1.0, Top+Top=0.1 | 40% |
+| Color harmony | HSV-based color theory rules | 20% |
+
+###  Conversational Stylist
+- Context-aware chat using last analyzed product + wardrobe info
+- RAG over fashion knowledge base (body types, color theory, fabric guide)
+- Persistent user profile across sessions
 
 ---
 
-## ⚠️ Data Disclaimer
-The `styles_sample.csv` included in the `dataset` folder is a **subset (sample)** of the original [Fashion Product Images Dataset](https://www.kaggle.com/datasets/paramaggarwal/fashion-product-images-dataset) on Kaggle. It is provided for demonstration purposes to ensure the code runs immediately.
+##  Project Structure
+
+```
+Fashion-Stylist-AI-Agent/
+│
+├── agent.py              # ReAct LLM agent with RAG
+├── main.py               # FastAPI backend (endpoints)
+├── decision_engine.py    # Rule-based size recommendation
+├── wardrobe.py           # CLIP wardrobe compatibility
+├── arayuz.py             # Streamlit frontend
+├── user_profile.py       # Persistent user profile management
+│
+├── extension/
+│   ├── manifest.json     # Chrome Extension MV3
+│   ├── content.js        # Product data extraction + Trendyol API
+│   ├── popup.html        # Extension popup UI
+│   └── popup.js          # Popup logic
+│
+├── dataset/              # Fashion knowledge base (RAG)
+│   ├── body_types.txt
+│   ├── color_theory.txt
+│   └── fabric_guide.txt
+│
+├── requirements.txt
+└── README.md
+```
 
 ---
 
-**Developed by:** Miray
+##  Installation & Setup
+
+### Prerequisites
+- Python 3.10+
+- Google Chrome (for extension)
+- Groq API key → [console.groq.com](https://console.groq.com)
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/Miray243/Fashion-Stylist-AI-Agent-Thesis.git
+cd Fashion-Stylist-AI-Agent-Thesis
+```
+
+### 2. Install dependencies
+```bash
+pip install -r requirements.txt
+pip install Pillow
+```
+
+### 3. Set up environment variables
+Create a `.env` file in the project root:
+```
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+### 4. Run the system
+
+**Terminal 1 — FastAPI backend:**
+```bash
+uvicorn main:app
+```
+
+**Terminal 2 — Streamlit frontend:**
+```bash
+streamlit run arayuz.py
+```
+
+### 5. Install Chrome Extension
+1. Open Chrome → `chrome://extensions`
+2. Enable **Developer mode**
+3. Click **Load unpacked** → select the `extension/` folder
+
+---
+
+##  Supported E-Commerce Platforms
+
+| Platform | Review Integration | Product Data |
+|---|---|---|
+| Trendyol | ✅ API (full stats) | ✅ Full |
+| Hepsiburada | DOM | ✅ Full |
+| Amazon Turkey | DOM | ✅ Full |
+| Zara | DOM | ✅ Full |
+| Mango | DOM | ✅ Full |
+| N11 | DOM | Partial |
+| Boyner | DOM | Partial |
+| LCWaikiki | DOM | Partial |
+| Koton | DOM | Partial |
+
+---
+
+##  Results
+
+| Metric | Result |
+|---|---|
+| Decision engine accuracy | 88% |
+| Allergy detection recall | 100% |
+| Review API success rate | 100% (20/20 pages) |
+| End-to-end analysis latency | ~4.2 seconds |
+| Wardrobe compatibility (top+bottom) | ~84–87% |
+| Wardrobe compatibility (top+top) | ~49–53% (correctly low) |
+
+---
+
+##  Technical Stack
+
+| Technology | Version | Purpose |
+|---|---|---|
+| Python | 3.13.3 | Backend language |
+| FastAPI | Latest | REST API |
+| Streamlit | Latest | Web UI |
+| ChromaDB | 0.4.22 | Vector database (RAG + wardrobe) |
+| sentence-transformers | 2.5.1 | CLIP + text embeddings |
+| Groq SDK | 0.5.0 | LLM inference (LLaMA 3.3 70B) |
+| Pillow | Latest | Image processing |
+| Chrome Extension MV3 | — | Browser integration |
+
+---
+
+##  License
+
+This project was developed as a graduation thesis. All rights reserved © 2026 Miray Balıkoğlu.
