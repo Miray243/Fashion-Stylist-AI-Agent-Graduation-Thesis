@@ -1,0 +1,23 @@
+[
+  {
+    "id": "4b0e37fd",
+    "label": "mavi_tişört",
+    "image_path": "wardrobe_images\\4b0e37fd.png",
+    "category": "top",
+    "added_at": "2026-05-13T01:37:58.140107"
+  },
+  {
+    "id": "e62eeac3",
+    "label": "siyah_tişört",
+    "image_path": "wardrobe_images\\e62eeac3.png",
+    "category": "top",
+    "added_at": "2026-05-13T01:38:40.774917"
+  },
+  {
+    "id": "89016f9a",
+    "label": "kot_pantolon",
+    "image_path": "wardrobe_images\\89016f9a.png",
+    "category": "bottom",
+    "added_at": "2026-05-13T01:39:06.162541"
+  }
+]

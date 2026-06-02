@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fashion Stylist AI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 380px;
+      min-height: 520px;
+      background: #1a1a1a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #e8e8e8;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      padding: 14px 16px 12px;
+      border-bottom: 0.5px solid #333;
+    }
+    .header-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #e8e8e8;
+    }
+    .header-sub {
+      font-size: 11px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    /* ── ÜRÜN BAR ── */
+    .product-bar {
+      padding: 10px 16px;
+      background: #222;
+      border-bottom: 0.5px solid #333;
+    }
+    .product-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #ddd;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .product-meta {
+      display: flex;
+      gap: 14px;
+      margin-top: 5px;
+    }
+    .meta-chip {
+      font-size: 11px;
+      color: #888;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ── TABS ── */
+    .tabs {
+      display: flex;
+      border-bottom: 0.5px solid #333;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 12px;
+      color: #777;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+    .tab.active {
+      color: #AFA9EC;
+      border-bottom: 2px solid #7F77DD;
+    }
+
+    /* ── TAB İÇERİKLERİ ── */
+    .tab-content { display: none; padding: 14px 16px; }
+    .tab-content.active { display: block; }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 8px;
+    }
+
+    /* ── ANALİZ ET BUTONU ── */
+    .analyze-btn {
+      width: 100%;
+      padding: 11px;
+      background: #534AB7;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-bottom: 14px;
+      transition: background 0.15s;
+    }
+    .analyze-btn:hover { background: #7F77DD; }
+    .analyze-btn:disabled { cursor: default; }
+
+    /* ── BEDEN KARTI ── */
+    .beden-card {
+      background: #252525;
+      border: 0.5px solid #333;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .beden-size {
+      font-size: 38px;
+      font-weight: 500;
+      color: #AFA9EC;
+      line-height: 1;
+    }
+    .beden-label {
+      font-size: 11px;
+      color: #777;
+      margin-bottom: 5px;
+    }
+    .confidence {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(29,158,117,0.12);
+      border: 0.5px solid #1D9E75;
+      border-radius: 4px;
+      padding: 3px 9px;
+      font-size: 11px;
+      color: #5DCAA5;
+    }
+
+    /* ── ALERJİ UYARISI ── */
+    .alerji-warn {
+      background: rgba(163,45,45,0.1);
+      border: 0.5px solid #A32D2D;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .warn-icon {
+      color: #E24B4A;
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .alerji-warn span {
+      font-size: 12px;
+      color: #F09595;
+      line-height: 1.55;
+    }
+
+    /* ── LLM KUTUSU ── */
+    .llm-box {
+      background: #252525;
+      border: 0.5px solid #333;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .llm-text {
+      font-size: 12px;
+      color: #bbb;
+      line-height: 1.65;
+    }
+
+    /* ── LOADING ── */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 2px 0;
+    }
+    .dot {
+      width: 5px;
+      height: 5px;
+      background: #fff;
+      border-radius: 50%;
+      animation: bounce 1.2s ease-in-out infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40%           { transform: translateY(-6px); }
+    }
+
+    /* ── YORUM SEKME ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .stat-card {
+      background: #252525;
+      border: 0.5px solid #333;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .stat-val {
+      font-size: 22px;
+      font-weight: 500;
+      color: #AFA9EC;
+    }
+    .stat-lbl {
+      font-size: 10px;
+      color: #666;
+      margin-top: 3px;
+    }
+
+    .size-bars {
+      background: #252525;
+      border: 0.5px solid #333;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .size-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+    .size-bar-row:last-child { margin-bottom: 0; }
+    .size-bar-label {
+      font-size: 11px;
+      color: #888;
+      width: 22px;
+      flex-shrink: 0;
+    }
+    .size-bar-track {
+      flex: 1;
+      height: 5px;
+      background: #2e2e2e;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .size-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: #534AB7;
+    }
+    .size-bar-count {
+      font-size: 10px;
+      color: #555;
+      width: 36px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .ai-summary {
+      background: #252525;
+      border: 0.5px solid #333;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: #5DCAA5;
+      background: rgba(29,158,117,0.08);
+      border: 0.5px solid #1D9E75;
+      border-radius: 4px;
+      padding: 2px 8px;
+      margin-bottom: 8px;
+    }
+    .ai-text {
+      font-size: 11px;
+      color: #bbb;
+      line-height: 1.65;
+    }
+
+    /* ── GARDIRP UYUMU ── */
+    .wardrobe-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #252525;
+      border: 0.5px solid #333;
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+    }
+    .wardrobe-item img {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .wardrobe-item-label {
+      flex: 1;
+      font-size: 11px;
+      color: #ccc;
+    }
+    .wardrobe-score {
+      font-size: 12px;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+    .score-high  { color: #5DCAA5; }
+    .score-mid   { color: #E8A44A; }
+    .score-low   { color: #E24B4A; }
+
+    /* ── HATA KUTUSU ── */
+    .error-box {
+      background: rgba(163,45,45,0.08);
+      border: 0.5px solid #A32D2D;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      color: #F09595;
+      line-height: 1.5;
+      display: none;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      padding: 8px 16px;
+      border-top: 0.5px solid #2a2a2a;
+      font-size: 10px;
+      color: #444;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-title">Fashion Stylist AI</div>
+    <div class="header-sub" id="site-label">Yükleniyor...</div>
+  </div>
+
+  <!-- ÜRÜN BİLGİSİ -->
+  <div class="product-bar">
+    <div class="product-name" id="product-name">Ürün bilgisi bekleniyor...</div>
+    <div class="product-meta">
+      <span class="meta-chip" id="price-chip"></span>
+      <span class="meta-chip" id="fabric-chip"></span>
+    </div>
+  </div>
+
+  <!-- SEKMELER -->
+  <div class="tabs">
+    <button class="tab active" id="tab-analiz">Analiz</button>
+    <button class="tab" id="tab-yorumlar">Yorumlar</button>
+  </div>
+
+  <!-- ANALİZ SEKMESİ -->
+  <div class="tab-content active" id="content-analiz">
+
+    <button class="analyze-btn" id="analyze-btn">
+      Analiz Et
+    </button>
+
+    <div class="error-box" id="error-box"></div>
+
+    <div id="result-area" style="display:none">
+      <div class="section-label">Beden Önerisi</div>
+      <div class="beden-card">
+        <div class="beden-size" id="size-result">—</div>
+        <div>
+          <div class="beden-label">Önerilen beden</div>
+          <div class="confidence" id="confidence-badge">— güven</div>
+        </div>
+      </div>
+
+      <div class="alerji-warn" id="alerji-warn" style="display:none">
+        <span class="warn-icon">&#9888;</span>
+        <span id="alerji-text"></span>
+      </div>
+
+      <!-- Gardırop Uyumu -->
+      <div id="wardrobe-section" style="display:none">
+        <div class="section-label">Gardırop Uyumu</div>
+        <div id="wardrobe-items"></div>
+        <!-- Kombin Önerisi -->
+        <div id="kombin-box" style="display:none; margin-top:8px;">
+          <div class="section-label">Kombin Önerisi</div>
+          <div class="llm-box">
+            <div class="llm-text" id="kombin-text"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">Stilist Yorumu</div>
+      <div class="llm-box">
+        <div class="llm-text" id="llm-text">Yükleniyor...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- YORUMLAR SEKMESİ -->
+  <div class="tab-content" id="content-yorumlar">
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-val" id="avg-rating">—</div>
+        <div class="stat-lbl">Ortalama puan</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="total-comments">—</div>
+        <div class="stat-lbl">Toplam yorum</div>
+      </div>
+    </div>
+
+    <div class="section-label">Beden dağılımı</div>
+    <div class="size-bars" id="size-bars">
+      <div style="font-size:11px; color:#555;">Henüz analiz yapılmadı.</div>
+    </div>
+
+    <div class="section-label">Trendyol AI Özeti</div>
+    <div class="ai-summary" id="ai-summary-box" style="display:none">
+      <div class="ai-badge">Trendyol AI</div>
+      <div class="ai-text" id="ai-summary-text"></div>
+    </div>
+
+  </div>
+
+  <div class="footer">Fashion Stylist AI Agent &mdash; Miray Balıkoğlu</div>
+
+<script src="popup.js"></script>
+
+</body>
+</html>
