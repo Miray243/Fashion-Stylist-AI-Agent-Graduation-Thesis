@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Student** | Miray Balıkoğlu (2021556009) |
+| **Student** | Miray Balıkoğlu |
 | **Advisor** | Prof. Dr. Umut Orhan |
 | **University** | Çukurova University |
 | **Department** | Computer Engineering |
@@ -76,7 +76,7 @@ Three-layer compatibility scoring:
 ##  Project Structure
 
 ```
-Fashion-Stylist-AI-Agent/
+Fashion-Stylist-AI-Agent-Graduation-Thesis/
 │
 ├── agent.py              # ReAct LLM agent with RAG
 ├── main.py               # FastAPI backend (endpoints)
@@ -92,9 +92,9 @@ Fashion-Stylist-AI-Agent/
 │   └── popup.js          # Popup logic
 │
 ├── dataset/              # Fashion knowledge base (RAG)
-│   ├── body_types.txt
-│   ├── color_theory.txt
-│   └── fabric_guide.txt
+│   ├── body_type_guide.txt
+│   ├── color_theory_analysis.txt
+│   └── fabric_and_care_guide.txt
 │
 ├── requirements.txt
 └── README.md
@@ -111,14 +111,16 @@ Fashion-Stylist-AI-Agent/
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/Miray243/Fashion-Stylist-AI-Agent-Thesis.git
-cd Fashion-Stylist-AI-Agent-Thesis
+git clone https://github.com/Miray243/Fashion-Stylist-AI-Agent-Graduation-Thesis.git
+cd Fashion-Stylist-AI-Agent-Graduation-Thesis
 ```
 
 ### 2. Install dependencies
 ```bash
+python -m venv .venv
+# macOS/Linux: source .venv/bin/activate
+# Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-pip install Pillow
 ```
 
 ### 3. Set up environment variables
@@ -138,6 +140,8 @@ uvicorn main:app
 ```bash
 streamlit run arayuz.py
 ```
+
+The app creates `user_profile.json`, `wardrobe_meta.json`, `wardrobe_db/`, and `wardrobe_images/` locally as you use it. These generated files are excluded from version control.
 
 ### 5. Install Chrome Extension
 1. Open Chrome → `chrome://extensions`
