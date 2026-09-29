@@ -2,3 +2,10 @@ groq==0.5.0
 chromadb==0.4.22
 sentence-transformers==2.5.1
 pandas==2.1.4
+fastapi
+uvicorn
+streamlit
+requests
+python-dotenv
+Pillow
+numpy
