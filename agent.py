@@ -123,9 +123,13 @@ class Agent:
             model=GROQ_MODEL,
             messages=self.messages,
             temperature=0,
-            stop=["PAUSE", "Gözlem:", "Observation:"]
+            max_tokens=1024
         )
-        return completion.choices[0].message.content
+        content = completion.choices[0].message.content
+        if not content or not content.strip():
+            reason = completion.choices[0].finish_reason
+            raise RuntimeError(f"Groq boş agent yanıtı döndürdü (finish_reason={reason}).")
+        return content
 
 action_re = re.compile(r'^(?:Action|Eylem|Aksiyon): (\w+): (.*)$')
 known_actions = {"calculator": calculator, "search_knowledge_base": search_knowledge_base}
