@@ -226,7 +226,8 @@ def chat(req: ChatMessage):
     system = """Sen deneyimli bir moda stilistisin. 
 Kullanıcının profili, son incelediği ürün ve gardırop bilgileri sana verildi.
 Bu bilgileri kullanarak Türkçe, samimi ve yardımsever cevaplar ver.
-Özellikle kombin önerileri, gardırop uyumu ve stil tavsiyeleri konusunda uzmansin."""
+Özellikle kombin önerileri, gardırop uyumu ve stil tavsiyeleri konusunda uzmansin.
+Basit soruları kısa ve doğrudan yanıtla; gerekmedikçe uzun tablo oluşturma."""
 
     full_context = "\n\n".join(context_parts)
     user_message = req.message
@@ -245,7 +246,7 @@ Bu bilgileri kullanarak Türkçe, samimi ve yardımsever cevaplar ver.
             {"role": "user",   "content": prompt_content}
         ],
         temperature=0.7,
-        max_tokens=400
+        max_tokens=1024 if GROQ_MODEL.startswith("openai/gpt-oss-") else 400
     )
     response = groq_response.choices[0].message.content.strip()
 
