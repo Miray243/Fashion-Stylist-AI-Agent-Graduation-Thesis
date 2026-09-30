@@ -124,7 +124,7 @@ class Agent:
             model=GROQ_MODEL,
             messages=self.messages,
             temperature=0,
-            max_tokens=1024
+            stop=["PAUSE", "Gözlem:", "Observation:"]
         )
         content = completion.choices[0].message.content
         if not content or not content.strip():
