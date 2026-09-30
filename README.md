@@ -127,6 +127,8 @@ pip install -r requirements.txt
 Create a `.env` file in the project root:
 ```
 GROQ_API_KEY=your_groq_api_key_here
+# Optional: set a model available to your Groq account.
+GROQ_MODEL=openai/gpt-oss-20b
 ```
 
 ### 4. Run the system

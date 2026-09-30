@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
 import os
-from agent import query
+from agent import query, GROQ_MODEL
 from decision_engine import run_decision_engine
 from user_profile import save_analysis_to_history
 
@@ -79,7 +79,7 @@ Karar:
 Sadece kullanıcıya yönelik Türkçe tavsiyeyi yaz, başka bir şey ekleme."""
 
     groq_response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=GROQ_MODEL,
         messages=[{"role": "user", "content": llm_prompt}],
         temperature=0.7,
         max_tokens=200
@@ -143,7 +143,7 @@ Bu bilgilere dayanarak:
 Türkçe, samimi, 3-4 cümle. Sadece öneriyi yaz."""
 
                         kombin_response = groq_client.chat.completions.create(
-                            model="llama-3.3-70b-versatile",
+                            model=GROQ_MODEL,
                             messages=[{"role": "user", "content": kombin_prompt}],
                             temperature=0.7,
                             max_tokens=250
@@ -226,7 +226,8 @@ def chat(req: ChatMessage):
     system = """Sen deneyimli bir moda stilistisin. 
 Kullanıcının profili, son incelediği ürün ve gardırop bilgileri sana verildi.
 Bu bilgileri kullanarak Türkçe, samimi ve yardımsever cevaplar ver.
-Özellikle kombin önerileri, gardırop uyumu ve stil tavsiyeleri konusunda uzmansin."""
+Özellikle kombin önerileri, gardırop uyumu ve stil tavsiyeleri konusunda uzmansin.
+Basit soruları kısa ve doğrudan yanıtla; gerekmedikçe uzun tablo oluşturma."""
 
     full_context = "\n\n".join(context_parts)
     user_message = req.message
@@ -239,13 +240,13 @@ Bu bilgileri kullanarak Türkçe, samimi ve yardımsever cevaplar ver.
     # Direkt Groq çağrısı — ajan döngüsü yok
     groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     groq_response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=GROQ_MODEL,
         messages=[
             {"role": "system", "content": system},
             {"role": "user",   "content": prompt_content}
         ],
         temperature=0.7,
-        max_tokens=400
+        max_tokens=1024 if GROQ_MODEL.startswith("openai/gpt-oss-") else 400
     )
     response = groq_response.choices[0].message.content.strip()
 
