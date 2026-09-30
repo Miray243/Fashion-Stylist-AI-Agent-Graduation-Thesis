@@ -9,6 +9,7 @@ import re
 from user_profile import get_profile, update_profile_from_text, profile_to_context
 
 load_dotenv()
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 chroma_client = chromadb.Client()
@@ -119,7 +120,7 @@ class Agent:
 
     def execute(self):
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=GROQ_MODEL,
             messages=self.messages,
             temperature=0,
             stop=["PAUSE", "Gözlem:", "Observation:"]
