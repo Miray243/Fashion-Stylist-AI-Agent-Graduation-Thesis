@@ -146,12 +146,17 @@ Türkçe, samimi, 3-4 cümle. Sadece öneriyi yaz."""
                             model=GROQ_MODEL,
                             messages=[{"role": "user", "content": kombin_prompt}],
                             temperature=0.7,
-                            max_tokens=250
+                            max_tokens=1024 if GROQ_MODEL.startswith("openai/gpt-oss-") else 250
                         )
-                        kombin_oneri = kombin_response.choices[0].message.content.strip()
+                        kombin_choice = kombin_response.choices[0]
+                        if kombin_choice.finish_reason == "length":
+                            raise RuntimeError("Kombin önerisi çıktı sınırına ulaştı.")
+                        kombin_oneri = (kombin_choice.message.content or "").strip()
+                        if not kombin_oneri:
+                            raise RuntimeError("Kombin önerisi boş döndü.")
 
         except Exception as e:
-            print(f"⚠️ Gardırop uyumu hesaplanamadı: {e}")
+            print(f"⚠️ Gardırop uyumu veya kombin önerisi hesaplanamadı: {e}")
 
     response_data = {
         "recommended_size":       size_rec["recommended_size"],
