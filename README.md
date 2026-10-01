@@ -14,11 +14,11 @@
 
 ##  Overview
 
-E-commerce fashion return rates have reached **30–40% globally**, with size mismatches being the leading cause. This project presents a multi-layered AI decision agent that provides **personalized, context-aware clothing recommendations** during active shopping sessions.
+This project provides **personalized, context-aware clothing recommendations** during online shopping. It combines rule-based size advice with a fashion knowledge base and optional visual wardrobe matching.
 
 The system combines:
 - A **rule-based decision engine** for deterministic, explainable size recommendations
-- A **ReAct-framework LLM agent** (LLaMA 3.3 70B via Groq) for natural language styling advice
+- A **local Ollama LLM agent** (default: Llama 3.1 8B) with fashion knowledge retrieval tools
 - A **CLIP-based visual wardrobe analysis** module for outfit compatibility scoring
 - A **Trendyol review API integration** for community-sourced sizing statistics
 
@@ -31,7 +31,7 @@ The system combines:
 │   Chrome Extension  │────▶│   FastAPI Backend     │────▶│  Streamlit Frontend │
 │                     │     │                       │     │                     │
 │ • Product data      │     │ • Decision engine     │     │ • Profile manager   │
-│ • Review API        │     │ • LLM agent (ReAct)   │     │ • Recent analyses   │
+│ • Review API        │     │ • LLM agent + tools   │     │ • Recent analyses   │
 │ • Popup UI          │     │ • CLIP wardrobe        │     │ • Wardrobe tab      │
 │ • 9 e-commerce sites│     │ • Combo suggestions   │     │ • Chat with stylist │
 └─────────────────────┘     └──────────────────────┘     └─────────────────────┘
@@ -45,7 +45,7 @@ The system combines:
 - Rule-based engine detects product fit type (slim/regular/loose) from product name
 - Adjusts recommendation based on user's fit preference (+/- 1 size step)
 - BMI-based size estimation from user profile
-- **88% accuracy** on test set with calibrated confidence scores (85–95%)
+- Returns a rule-based confidence value; it is not a measured probability of fit
 
 ###  Fabric Allergy Detection
 - Detects allergens (polyester, wool, nylon, acrylic) in fabric composition
@@ -53,9 +53,8 @@ The system combines:
 - Shows warning in popup before purchase
 
 ###  Trendyol Review API Integration
-- Fetches size distribution, height/weight stats of actual buyers
-- Retrieves AI-generated review summary from Trendyol
-- Enriches recommendations with community-validated data
+- Attempts to fetch size statistics and a review summary from Trendyol when available
+- Adds that review context to the product analysis
 
 ###  CLIP-Based Wardrobe Compatibility
 Three-layer compatibility scoring:
@@ -68,7 +67,7 @@ Three-layer compatibility scoring:
 
 ###  Conversational Stylist
 - Context-aware chat using last analyzed product + wardrobe info
-- RAG over fashion knowledge base (body types, color theory, fabric guide)
+- The styling agent can retrieve fashion knowledge (body types, color theory, fabric guide)
 - Persistent user profile across sessions
 
 ---
@@ -78,7 +77,8 @@ Three-layer compatibility scoring:
 ```
 Fashion-Stylist-AI-Agent-Graduation-Thesis/
 │
-├── agent.py              # ReAct LLM agent with RAG
+├── agent.py              # Ollama tool-call agent with RAG
+├── llm.py                # Shared Ollama chat client
 ├── main.py               # FastAPI backend (endpoints)
 ├── decision_engine.py    # Rule-based size recommendation
 ├── wardrobe.py           # CLIP wardrobe compatibility
@@ -105,9 +105,9 @@ Fashion-Stylist-AI-Agent-Graduation-Thesis/
 ##  Installation & Setup
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.12 (verified installation)
 - Google Chrome (for extension)
-- Groq API key → [console.groq.com](https://console.groq.com)
+- Ollama installed and running locally; install the model with `ollama pull llama3.1:8b` if needed
 
 ### 1. Clone the repository
 ```bash
@@ -123,15 +123,17 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 3. Set up environment variables
-Create a `.env` file in the project root:
+### 3. Optional local model settings
+The default is the locally installed `llama3.1:8b`. You can change the model or host in a project-root `.env` file:
 ```
-GROQ_API_KEY=your_groq_api_key_here
-# Optional: set a model available to your Groq account.
-GROQ_MODEL=openai/gpt-oss-20b
+OLLAMA_MODEL=llama3.1:8b
+OLLAMA_HOST=http://127.0.0.1:11434
 ```
+No API key is required for the local Ollama server. Existing `GROQ_API_KEY` and `GROQ_MODEL` values are ignored.
 
 ### 4. Run the system
+
+Check that `ollama list` shows `llama3.1:8b` and Ollama is running. The first LLM request may take longer while the model loads.
 
 **Terminal 1 — FastAPI backend:**
 ```bash
@@ -154,30 +156,19 @@ The app creates `user_profile.json`, `wardrobe_meta.json`, `wardrobe_db/`, and `
 
 ##  Supported E-Commerce Platforms
 
-| Platform | Review Integration | Product Data |
+The extension lists nine shopping sites. Product selectors are tailored for Trendyol, Hepsiburada, Amazon Turkey, and Zara. The remaining sites use generic DOM selectors, so extraction depends on each page's current markup.
+
+| Platform | Product extraction | Review data |
 |---|---|---|
-| Trendyol |  API (full stats) |  Full |
-| Hepsiburada | DOM |  Full |
-| Amazon Turkey | DOM |  Full |
-| Zara | DOM |  Full |
-| Mango | DOM |  Full |
-| N11 | DOM | Partial |
-| Boyner | DOM | Partial |
-| LCWaikiki | DOM | Partial |
-| Koton | DOM | Partial |
+| Trendyol | Site-specific selectors | API request when available |
+| Hepsiburada, Amazon Turkey, Zara | Site-specific selectors | DOM extraction when present |
+| Mango, N11, Boyner, LCWaikiki, Koton | Generic DOM fallback | DOM extraction when present |
 
 ---
 
-##  Results
+##  Verification
 
-| Metric | Result |
-|---|---|
-| Decision engine accuracy | 88% |
-| Allergy detection recall | 100% |
-| Review API success rate | 100% (20/20 pages) |
-| End-to-end analysis latency | ~4.2 seconds |
-| Wardrobe compatibility (top+bottom) | ~84–87% |
-| Wardrobe compatibility (top+top) | ~49–53% (correctly low) |
+The Ollama integration has been checked with a simulated local chat server for the RAG agent, `/chat`, `/urun-analiz`, and a visual wardrobe suggestion. This checks the request format and application flow; it does not measure response quality or speed. A live check with the local `llama3.1:8b` model is still needed.
 
 ---
 
@@ -185,12 +176,12 @@ The app creates `user_profile.json`, `wardrobe_meta.json`, `wardrobe_db/`, and `
 
 | Technology | Version | Purpose |
 |---|---|---|
-| Python | 3.13.3 | Backend language |
+| Python | 3.12 (verified) | Backend language |
 | FastAPI | Latest | REST API |
 | Streamlit | Latest | Web UI |
 | ChromaDB | 0.4.22 | Vector database (RAG + wardrobe) |
 | sentence-transformers | 2.5.1 | CLIP + text embeddings |
-| Groq SDK | 0.5.0 | LLM inference (LLaMA 3.3 70B) |
+| Ollama local API | Local server | LLM inference (default: Llama 3.1 8B) |
 | Pillow | Latest | Image processing |
 | Chrome Extension MV3 | — | Browser integration |
 
