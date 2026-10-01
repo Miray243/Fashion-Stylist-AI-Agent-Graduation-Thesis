@@ -6,11 +6,9 @@ from chromadb.utils import embedding_functions
 import glob
 import uuid
 import re
-import json
 from user_profile import get_profile, update_profile_from_text, profile_to_context
 
 load_dotenv()
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 chroma_client = chromadb.Client()
@@ -121,112 +119,15 @@ class Agent:
 
     def execute(self):
         completion = client.chat.completions.create(
-            model=GROQ_MODEL,
+            model="llama-3.3-70b-versatile",
             messages=self.messages,
             temperature=0,
             stop=["PAUSE", "Gözlem:", "Observation:"]
         )
-        content = completion.choices[0].message.content
-        if not content or not content.strip():
-            reason = completion.choices[0].finish_reason
-            raise RuntimeError(f"Groq boş agent yanıtı döndürdü (finish_reason={reason}).")
-        return content
+        return completion.choices[0].message.content
 
 action_re = re.compile(r'^(?:Action|Eylem|Aksiyon): (\w+): (.*)$')
 known_actions = {"calculator": calculator, "search_knowledge_base": search_knowledge_base}
-
-native_tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": "search_knowledge_base",
-            "description": "Find relevant styling rules and fashion theory.",
-            "parameters": {
-                "type": "object",
-                "properties": {"query": {"type": "string"}},
-                "required": ["query"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "calculator",
-            "description": "Calculate a mathematical expression.",
-            "parameters": {
-                "type": "object",
-                "properties": {"expression": {"type": "string"}},
-                "required": ["expression"],
-            },
-        },
-    },
-]
-
-def query_with_native_tools(prompt: str, max_turns: int) -> str:
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are an expert personal stylist. For styling questions, search the "
-                "knowledge base before answering. Use the provided tools when useful. "
-                "Answer in the user's language without exposing tool calls or reasoning."
-            ),
-        },
-        {"role": "user", "content": prompt},
-    ]
-    for _ in range(max_turns):
-        completion = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=messages,
-            tools=native_tools,
-            tool_choice="auto",
-            temperature=0,
-            max_tokens=1024,
-        )
-        choice = completion.choices[0]
-        tool_calls = choice.message.tool_calls or []
-        if not tool_calls:
-            content = choice.message.content
-            if not content or not content.strip():
-                raise RuntimeError(
-                    f"Groq boş agent yanıtı döndürdü (finish_reason={choice.finish_reason})."
-                )
-            return content.strip()
-
-        messages.append({
-            "role": "assistant",
-            "content": choice.message.content,
-            "tool_calls": [
-                {
-                    "id": call.id,
-                    "type": "function",
-                    "function": {
-                        "name": call.function.name,
-                        "arguments": call.function.arguments,
-                    },
-                }
-                for call in tool_calls
-            ],
-        })
-        for call in tool_calls:
-            name = call.function.name
-            try:
-                arguments = json.loads(call.function.arguments)
-                argument = arguments.get("query" if name == "search_knowledge_base" else "expression")
-                if name not in known_actions or not isinstance(argument, str):
-                    observation = "Tool not found or invalid arguments."
-                else:
-                    observation = known_actions[name](argument)
-            except (ValueError, TypeError, AttributeError):
-                observation = "Invalid tool arguments."
-            messages.append({
-                "role": "tool",
-                "tool_call_id": call.id,
-                "name": name,
-                "content": str(observation),
-            })
-
-    return "Maksimum adım sayısına ulaşıldı."
 
 def query(question: str, max_turns: int = 5) -> str:
     # Metinden profil bilgisi çıkar ve kaydet
@@ -242,9 +143,6 @@ def query(question: str, max_turns: int = 5) -> str:
     else:
         next_prompt = question
     
-    if GROQ_MODEL.startswith("openai/gpt-oss-"):
-        return query_with_native_tools(next_prompt, max_turns)
-
     bot = Agent(system_prompt)
 
     for i in range(max_turns):
