@@ -1,17 +1,10 @@
-import os
-from dotenv import load_dotenv
-from groq import Groq
 import chromadb
 from chromadb.utils import embedding_functions
 import glob
 import uuid
-import re
 import json
 from user_profile import get_profile, update_profile_from_text, profile_to_context
-
-load_dotenv()
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+from llm import chat
 
 chroma_client = chromadb.Client()
 emb_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
@@ -73,66 +66,6 @@ def search_knowledge_base(query: str) -> str:
     except Exception as e:
         return f"Veritabanı hatası: {e}"
 
-system_prompt = """
-You are an expert Personal Stylist.
-You MUST run in a loop of Thought, Action, PAUSE, Observation.
-At the end output an Answer.
-
-STRICT RULES:
-- ALWAYS think and act in ENGLISH only.
-- ALWAYS use exact format below. Never deviate.
-- If user writes in Turkish, still think in English. Only the final Answer can be in Turkish.
-
-EXACT FORMAT YOU MUST USE:
-Thought: [your reasoning in English]
-Action: search_knowledge_base: [search query in English]
-PAUSE
-
-After Observation, continue:
-Thought: [reasoning]
-Answer: [final answer - can be in Turkish if user asked in Turkish]
-
-Available actions:
-- search_knowledge_base: Search for styling rules and fashion theory
-- calculator: Calculate mathematical expressions
-
-Example:
-Question: What fits a Pear body shape?
-Thought: I need to find styling rules for Pear body shape.
-Action: search_knowledge_base: Pear body shape styling rules
-PAUSE
-Observation: A-line skirts work well...
-Thought: I have enough info to answer.
-Answer: For a Pear shape, A-line skirts work best...
-""".strip()
-
-class Agent:
-    def __init__(self, system=""):
-        self.system = system
-        self.messages = []
-        if self.system:
-            self.messages.append({"role": "system", "content": system})
-
-    def __call__(self, message):
-        self.messages.append({"role": "user", "content": message})
-        result = self.execute()
-        self.messages.append({"role": "assistant", "content": result})
-        return result
-
-    def execute(self):
-        completion = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=self.messages,
-            temperature=0,
-            stop=["PAUSE", "Gözlem:", "Observation:"]
-        )
-        content = completion.choices[0].message.content
-        if not content or not content.strip():
-            reason = completion.choices[0].finish_reason
-            raise RuntimeError(f"Groq boş agent yanıtı döndürdü (finish_reason={reason}).")
-        return content
-
-action_re = re.compile(r'^(?:Action|Eylem|Aksiyon): (\w+): (.*)$')
 known_actions = {"calculator": calculator, "search_knowledge_base": search_knowledge_base}
 
 native_tools = [
@@ -175,44 +108,32 @@ def query_with_native_tools(prompt: str, max_turns: int) -> str:
         {"role": "user", "content": prompt},
     ]
     for _ in range(max_turns):
-        completion = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=messages,
-            tools=native_tools,
-            tool_choice="auto",
-            temperature=0,
-            max_tokens=1024,
+        result = chat(
+            messages, tools=native_tools, temperature=0, max_tokens=1024
         )
-        choice = completion.choices[0]
-        tool_calls = choice.message.tool_calls or []
+        reply = result["message"]
+        tool_calls = reply.get("tool_calls") or []
         if not tool_calls:
-            content = choice.message.content
-            if not content or not content.strip():
-                raise RuntimeError(
-                    f"Groq boş agent yanıtı döndürdü (finish_reason={choice.finish_reason})."
-                )
-            return content.strip()
+            content = (reply.get("content") or "").strip()
+            if not content or result.get("done_reason") == "length":
+                raise RuntimeError("Ollama boş veya kesilmiş agent yanıtı döndürdü.")
+            return content
 
         messages.append({
             "role": "assistant",
-            "content": choice.message.content,
-            "tool_calls": [
-                {
-                    "id": call.id,
-                    "type": "function",
-                    "function": {
-                        "name": call.function.name,
-                        "arguments": call.function.arguments,
-                    },
-                }
-                for call in tool_calls
-            ],
+            "content": reply.get("content") or "",
+            "tool_calls": tool_calls,
         })
         for call in tool_calls:
-            name = call.function.name
+            function = call.get("function") or {}
+            name = function.get("name", "")
             try:
-                arguments = json.loads(call.function.arguments)
-                argument = arguments.get("query" if name == "search_knowledge_base" else "expression")
+                arguments = function.get("arguments") or {}
+                if isinstance(arguments, str):
+                    arguments = json.loads(arguments)
+                argument = arguments.get(
+                    "query" if name == "search_knowledge_base" else "expression"
+                )
                 if name not in known_actions or not isinstance(argument, str):
                     observation = "Tool not found or invalid arguments."
                 else:
@@ -221,54 +142,15 @@ def query_with_native_tools(prompt: str, max_turns: int) -> str:
                 observation = "Invalid tool arguments."
             messages.append({
                 "role": "tool",
-                "tool_call_id": call.id,
-                "name": name,
+                "tool_name": name,
                 "content": str(observation),
             })
 
     return "Maksimum adım sayısına ulaşıldı."
 
+
 def query(question: str, max_turns: int = 5) -> str:
-    # Metinden profil bilgisi çıkar ve kaydet
     update_profile_from_text(question)
-    
-    # Profili context olarak al
-    profile = get_profile()
-    profile_context = profile_to_context(profile)
-    
-    # Profil varsa soruya ekle
-    if profile_context:
-        next_prompt = f"{profile_context}\n\nQuestion: {question}"
-    else:
-        next_prompt = question
-    
-    if GROQ_MODEL.startswith("openai/gpt-oss-"):
-        return query_with_native_tools(next_prompt, max_turns)
-
-    bot = Agent(system_prompt)
-
-    for i in range(max_turns):
-        result = bot(next_prompt)
-        actions = [action_re.match(a) for a in result.split('\n') if action_re.match(a)]
-
-        if actions:
-            action, action_input = actions[0].groups()
-            if action in known_actions:
-                observation = known_actions[action](action_input)
-                next_prompt = f"Observation: {observation}"
-            else:
-                next_prompt = "Observation: Tool not found."
-        else:
-            if "Answer:" in result or "Cevap:" in result:
-                if "Answer:" in result:
-                    return result.split("Answer:")[-1].strip()
-                return result.split("Cevap:")[-1].strip()
-            lines = [l for l in result.split('\n') 
-                    if not l.startswith("Thought:") 
-                    and not l.startswith("Action:")
-                    and not l.startswith("PAUSE")
-                    and l.strip()]
-            answer = "\n".join(lines).strip()
-            return answer if answer else result.strip()
-
-    return "Maksimum adım sayısına ulaşıldı."
+    profile_context = profile_to_context(get_profile())
+    prompt = f"{profile_context}\n\nQuestion: {question}" if profile_context else question
+    return query_with_native_tools(prompt, max_turns)
