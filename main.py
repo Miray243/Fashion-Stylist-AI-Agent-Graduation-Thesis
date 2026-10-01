@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
 import os
-from agent import query, GROQ_MODEL
+from llm import chat as ollama_chat
 from decision_engine import run_decision_engine
 from user_profile import save_analysis_to_history
 
@@ -44,25 +44,7 @@ def urun_analiz(urun: Urun):
             top_str = ", ".join([f"{s}({c})" for s, c in top_sizes])
             review_context += f"\nMost purchased sizes: {top_str}"
 
-    # 2. LLM sadece kararı güzel dille anlatır
-    soru = f"""Analyze this product for the user. Use the decision already made below.
-
-Product: {urun.urun_adi}
-Fabric: {urun.kumas or 'unknown'}
-Model height: {urun.manken_boyu or 'unknown'}cm
-{review_context}
-
-Decision made by the algorithm:
-- Recommended size: {size_rec['recommended_size']} (user's normal size: {size_rec['original_size']})
-- Reason: {size_rec['reason']}
-- Confidence: {int(size_rec['confidence']*100)}%
-- Allergy warnings: {', '.join(warnings) if warnings else 'None'}
-
-Present this decision to the user in a friendly, clear way in Turkish. Max 3 sentences."""
-
-    # 2. LLM kararı Türkçe anlatsın — ajan döngüsü yerine direkt Groq çağrısı
-    from groq import Groq
-    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    # 2. LLM algoritmik kararı Türkçe anlatsın.
 
     llm_prompt = f"""Sen bir moda stilistisin. Aşağıdaki algoritmik kararı kullanıcıya Türkçe, samimi ve kısa (2-3 cümle) şekilde anlat.
 
@@ -78,13 +60,11 @@ Karar:
 
 Sadece kullanıcıya yönelik Türkçe tavsiyeyi yaz, başka bir şey ekleme."""
 
-    groq_response = groq_client.chat.completions.create(
-        model=GROQ_MODEL,
-        messages=[{"role": "user", "content": llm_prompt}],
-        temperature=0.7,
-        max_tokens=200
+    llm_response = ollama_chat(
+        [{"role": "user", "content": llm_prompt}],
+        temperature=0.7, max_tokens=256
     )
-    cevap = groq_response.choices[0].message.content.strip()
+    cevap = (llm_response["message"].get("content") or "").strip()
 
     if not cevap:
         cevap = (
@@ -142,16 +122,13 @@ Bu bilgilere dayanarak:
 
 Türkçe, samimi, 3-4 cümle. Sadece öneriyi yaz."""
 
-                        kombin_response = groq_client.chat.completions.create(
-                            model=GROQ_MODEL,
-                            messages=[{"role": "user", "content": kombin_prompt}],
-                            temperature=0.7,
-                            max_tokens=1024 if GROQ_MODEL.startswith("openai/gpt-oss-") else 250
+                        kombin_response = ollama_chat(
+                            [{"role": "user", "content": kombin_prompt}],
+                            temperature=0.7, max_tokens=512
                         )
-                        kombin_choice = kombin_response.choices[0]
-                        if kombin_choice.finish_reason == "length":
+                        if kombin_response.get("done_reason") == "length":
                             raise RuntimeError("Kombin önerisi çıktı sınırına ulaştı.")
-                        kombin_oneri = (kombin_choice.message.content or "").strip()
+                        kombin_oneri = (kombin_response["message"].get("content") or "").strip()
                         if not kombin_oneri:
                             raise RuntimeError("Kombin önerisi boş döndü.")
 
@@ -192,7 +169,6 @@ class ChatMessage(BaseModel):
 def chat(req: ChatMessage):
     from user_profile import update_profile_from_text, get_profile, profile_to_context
     from wardrobe import get_compatibility_summary, get_wardrobe
-    from groq import Groq
 
     old_profile = get_profile()
     update_profile_from_text(req.message)
@@ -242,18 +218,17 @@ Basit soruları kısa ve doğrudan yanıtla; gerekmedikçe uzun tablo oluşturma
     else:
         prompt_content = user_message
 
-    # Direkt Groq çağrısı — ajan döngüsü yok
-    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-    groq_response = groq_client.chat.completions.create(
-        model=GROQ_MODEL,
-        messages=[
+    # Direkt Ollama çağrısı — ajan döngüsü yok
+    llm_response = ollama_chat(
+        [
             {"role": "system", "content": system},
             {"role": "user",   "content": prompt_content}
         ],
-        temperature=0.7,
-        max_tokens=1024 if GROQ_MODEL.startswith("openai/gpt-oss-") else 400
+        temperature=0.7, max_tokens=512
     )
-    response = groq_response.choices[0].message.content.strip()
+    response = (llm_response["message"].get("content") or "").strip()
+    if not response:
+        raise RuntimeError("Ollama boş sohbet yanıtı döndürdü.")
 
     return {
         "response": response,
